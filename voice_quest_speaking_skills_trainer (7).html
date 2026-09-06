@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Quest - Speaking Skills Trainer</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'neon-green': '#10b981',
+                        'neon-cyan': '#06b6d4',
+                        'neon-purple': '#a855f7',
+                        'neon-pink': '#ec4899',
+                    },
+                    boxShadow: {
+                        'glow-green': '0 0 20px rgba(16, 185, 129, 0.4)',
+                        'glow-purple': '0 0 20px rgba(168, 85, 247, 0.4)',
+                        'glow-cyan': '0 0 20px rgba(6, 182, 212, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti for Victory Effect -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top center, #1e1b4b 0%, #0f172a 50%, #020617 100%);
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-white">
+
+    <!-- TOP NAVIGATION & HUD STATS BAR -->
+    <header class="sticky top-0 z-40 glass-panel border-b border-slate-800/80 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex items-center justify-between gap-2">
+            
+            <!-- Logo & Title (Clickable Home Link) -->
+            <button onclick="goHome()" class="flex items-center space-x-2 text-left group focus:outline-none" title="Return to Home Screen">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-neon-purple flex items-center justify-center shadow-glow-purple group-hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-microphone-lines text-white text-base"></i>
+                </div>
+                <div>
+                    <h1 class="text-xs font-black tracking-wider uppercase text-slate-400 group-hover:text-neon-cyan transition-colors">Voice Quest</h1>
+                    <p id="level-indicator" class="text-sm font-extrabold text-white leading-tight">Mission Selection</p>
+                </div>
+            </button>
+
+            <!-- Navigation Actions & Stats -->
+            <div class="flex items-center space-x-2 md:space-x-4">
+                
+                <!-- Home Button -->
+                <button onclick="goHome()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700/60" title="Go to Home Map">
+                    <i class="fa-solid fa-house text-sm"></i>
+                </button>
+
+                <!-- Explicit Microphone Activation Button -->
+                <button onclick="activateMicrophone()" id="nav-mic-btn" class="p-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700/60 flex items-center space-x-1.5 text-xs font-bold" title="Toggle Mic Access">
+                    <i class="fa-solid fa-microphone text-neon-cyan"></i>
+                    <span class="hidden sm:inline">Mic Access</span>
+                </button>
+
+                <!-- XP Display -->
+                <div class="bg-slate-900/90 border border-amber-500/30 px-3 py-1.5 rounded-xl flex items-center space-x-1.5">
+                    <i class="fa-solid fa-bolt text-amber-400 text-xs"></i>
+                    <span id="stat-xp" class="text-xs font-black text-amber-300">0 XP</span>
+                </div>
+
+                <!-- Combo Streak Badge -->
+                <div id="combo-container" class="hidden bg-slate-900/90 border border-neon-pink/30 px-2.5 py-1.5 rounded-xl flex items-center space-x-1">
+                    <i class="fa-solid fa-fire text-neon-pink text-xs animate-bounce"></i>
+                    <span id="stat-combo" class="text-xs font-black text-neon-pink">0x</span>
+                </div>
+
+                <!-- Stars Display -->
+                <div class="hidden sm:flex bg-slate-900/90 border border-indigo-500/30 px-3 py-1.5 rounded-xl items-center space-x-1">
+                    <i class="fa-solid fa-star text-yellow-400 text-xs"></i>
+                    <span id="stat-stars" class="text-xs font-black text-yellow-300">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Mission Progress Bar -->
+        <div class="w-full bg-slate-800/60 h-1.5 mt-2.5 rounded-full overflow-hidden">
+            <div id="mission-progress-bar" class="bg-gradient-to-r from-neon-cyan via-indigo-500 to-neon-purple h-full w-0 transition-all duration-500"></div>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+
+        <!-- VIEW 1: WELCOME CAMPAIGN SELECTION MAP -->
+        <section id="view-welcome" class="space-y-8 my-auto">
+            <div class="text-center space-y-3 max-w-2xl mx-auto">
+                <span class="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-cyan-500/10 text-neon-cyan border border-cyan-500/30">Interactive Speech Trainer</span>
+                <h2 class="text-3xl md:text-5xl font-black tracking-tight text-white">Master Spoken English With <span class="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan via-indigo-400 to-neon-purple">Voice Quest</span></h2>
+                <p class="text-xs md:text-sm text-slate-400 leading-relaxed">Level up your pronunciation, preference expressions, and telephone conversation skills through interactive vocal challenges backed by native audio modeling.</p>
+                
+                <!-- Page 1 Microphone Check Action -->
+                <div class="pt-2 flex flex-wrap justify-center gap-3">
+                    <button onclick="testAndActivateMic()" id="welcome-mic-btn" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-bold text-xs flex items-center space-x-2 transition-all shadow-lg">
+                        <i class="fa-solid fa-microphone text-neon-cyan"></i>
+                        <span id="welcome-mic-btn-text">Check & Activate Mic</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Campaign Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                
+                <!-- Mission 1 Card -->
+                <div class="glass-panel p-6 rounded-2xl border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between space-y-4 group">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="p-3 rounded-xl bg-cyan-500/10 text-neon-cyan border border-cyan-500/20"><i class="fa-solid fa-font text-lg"></i></span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-800/80 px-2.5 py-1 rounded-full">Mission 01</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-neon-cyan transition-colors">Syllable Strike</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">Master primary stressed syllables in tricky multi-syllable vocabulary words.</p>
+                    </div>
+                    <div class="space-y-3 pt-2">
+                        <div class="text-[11px] font-bold text-slate-400 flex items-center justify-between border-t border-slate-800 pt-3">
+                            <span>10 Target Words</span>
+                            <i class="fa-solid fa-chevron-right text-slate-600"></i>
+                        </div>
+                        <button onclick="startMissionBriefing(1)" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-glow-cyan">Launch Mission 1</button>
+                    </div>
+                </div>
+
+                <!-- Mission 2 Card -->
+                <div class="glass-panel p-6 rounded-2xl border-slate-800 hover:border-purple-500/50 transition-all flex flex-col justify-between space-y-4 group">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="p-3 rounded-xl bg-purple-500/10 text-neon-purple border border-purple-500/20"><i class="fa-solid fa-comments text-lg"></i></span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-800/80 px-2.5 py-1 rounded-full">Mission 02</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-neon-purple transition-colors">Choice Arena</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">Express preferences naturally with clear rhythm, fluency, and proper intonation.</p>
+                    </div>
+                    <div class="space-y-3 pt-2">
+                        <div class="text-[11px] font-bold text-slate-400 flex items-center justify-between border-t border-slate-800 pt-3">
+                            <span>5 Target Phrases</span>
+                            <i class="fa-solid fa-chevron-right text-slate-600"></i>
+                        </div>
+                        <button onclick="startMissionBriefing(2)" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-glow-purple">Launch Mission 2</button>
+                    </div>
+                </div>
+
+                <!-- Mission 3 Card -->
+                <div class="glass-panel p-6 rounded-2xl border-slate-800 hover:border-emerald-500/50 transition-all flex flex-col justify-between space-y-4 group">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="p-3 rounded-xl bg-emerald-500/10 text-neon-green border border-emerald-500/20"><i class="fa-solid fa-phone-volume text-lg"></i></span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-800/80 px-2.5 py-1 rounded-full">Mission 03</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-white group-hover:text-neon-green transition-colors">Phone Preference Chat</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">Practice telephone conversations with a partner, taking turns stating and responding to preferences.</p>
+                    </div>
+                    <div class="space-y-3 pt-2">
+                        <div class="text-[11px] font-bold text-slate-400 flex items-center justify-between border-t border-slate-800 pt-3">
+                            <span>7 Phone Exchange Rounds</span>
+                            <i class="fa-solid fa-chevron-right text-slate-600"></i>
+                        </div>
+                        <button onclick="startMissionBriefing(3)" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-glow-green">Launch Mission 3</button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- VIEW 2: TACTICAL PRE-MISSION BRIEFING SCREEN -->
+        <section id="view-briefing" class="hidden max-w-3xl mx-auto w-full my-auto space-y-6">
+            <div class="glass-panel p-6 md:p-8 rounded-3xl border-slate-800 space-y-6 relative overflow-hidden">
+                <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
+                    <div class="space-y-1">
+                        <span id="briefing-tag" class="text-[10px] font-extrabold uppercase tracking-widest text-neon-cyan bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/30">Target Challenges</span>
+                        <h2 id="briefing-title" class="text-2xl md:text-3xl font-black text-white">Mission 1: Syllable Strike</h2>
+                    </div>
+                    <button onclick="goHome()" class="text-xs font-bold text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Primary Objective</h4>
+                        <p id="briefing-objective" class="text-sm text-slate-200 leading-relaxed">Speak words with correct syllable emphasis. Stress the capitalized syllable for maximum accuracy.</p>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pro Vocal Tip</h4>
+                        <div class="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 flex items-start space-x-2">
+                            <i class="fa-solid fa-lightbulb text-amber-400 text-sm mt-0.5"></i>
+                            <span id="briefing-tip">Use native audio playback to hear the exact pitch shift before attempting to record your voice.</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Challenge Roster</h4>
+                        <div id="briefing-targets-list" class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between gap-3">
+                    <button onclick="goHome()" class="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs uppercase tracking-wider transition-colors">Abort</button>
+                    <button onclick="launchGameplay()" class="px-8 py-3 rounded-xl bg-gradient-to-r from-neon-green to-emerald-600 hover:from-emerald-400 hover:to-emerald-600 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-glow-green flex items-center space-x-2">
+                        <span>Deploy into Arena</span>
+                        <i class="fa-solid fa-circle-play"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: GAMEPLAY ARENA DASHBOARD -->
+        <section id="view-gameplay" class="hidden w-full my-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- LEFT COLUMN: Mission HUD & Audio Visualizer -->
+                <div class="lg:col-span-3 glass-panel p-5 rounded-2xl border-slate-800 space-y-4 hidden lg:block">
+                    <div class="space-y-1">
+                        <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Active Mission</span>
+                        <h3 id="hud-level-name" class="text-base font-bold text-white">Syllable Strike</h3>
+                    </div>
+
+                    <!-- Visualizer -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 text-center space-y-3">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vocal Signal Frequency</span>
+                        <div id="visualizer-bars" class="flex items-center justify-center space-x-1 h-12">
+                            <div class="w-1.5 bg-neon-cyan/40 rounded-full h-3 transition-all"></div>
+                            <div class="w-1.5 bg-neon-cyan/60 rounded-full h-6 transition-all"></div>
+                            <div class="w-1.5 bg-neon-cyan rounded-full h-10 transition-all"></div>
+                            <div class="w-1.5 bg-neon-cyan/60 rounded-full h-5 transition-all"></div>
+                            <div class="w-1.5 bg-neon-cyan/40 rounded-full h-2 transition-all"></div>
+                        </div>
+                    </div>
+
+                    <!-- Live Transcript Box -->
+                    <div class="space-y-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Speech Transcript Log</span>
+                        <div id="transcript-display" class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-cyan-300 font-mono hidden min-h-[60px] break-words">
+                            We heard: "..."
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CENTER COLUMN: Interactive Challenge Card & Controls -->
+                <div class="lg:col-span-6 space-y-4">
+                    <div id="card-container" class="glass-panel p-6 md:p-8 rounded-3xl border-slate-800 transition-all duration-300 space-y-6 relative text-center">
+                        
+                        <!-- Top Card Header -->
+                        <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800/60 pb-3">
+                            <span id="challenge-counter" class="font-bold text-neon-cyan">Challenge 1 of 10</span>
+                            <span id="challenge-subtitle" class="font-medium">Stressed Syllables</span>
+                        </div>
+
+                        <!-- Phone Partner Prompt Box (Level 3 Only) -->
+                        <div id="opponent-prompt-box" class="hidden p-4 rounded-2xl bg-slate-950/90 border border-pink-500/30 text-left space-y-1">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-neon-pink"><i class="fa-solid fa-phone-volume mr-1"></i> Phone Partner Says:</span>
+                            <p id="opponent-statement" class="text-sm font-semibold text-slate-200 italic">"I think we should eat Italian food tonight, how about you?"</p>
+                        </div>
+
+                        <!-- Main Target Display -->
+                        <div class="space-y-2 py-4">
+                            <div id="visual-cue-box" class="hidden text-xs font-bold text-neon-purple tracking-widest uppercase bg-purple-500/10 inline-block px-3 py-1 rounded-full border border-purple-500/30">[pre-FER]</div>
+                            <h2 id="target-text" class="text-3xl md:text-4xl font-black text-white tracking-tight">prefer</h2>
+                        </div>
+
+                        <!-- Native Speech Audio Button -->
+                        <div class="flex items-center justify-center gap-3">
+                            <button onclick="speakTargetPhrase()" class="px-5 py-2.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/30 text-xs font-bold transition-all flex items-center space-x-2">
+                                <i class="fa-solid fa-volume-high text-neon-cyan"></i>
+                                <span>🔊 Listen First</span>
+                            </button>
+                        </div>
+
+                        <!-- Main Speech Mic Activation Area -->
+                        <div class="pt-4 space-y-3">
+                            <div class="relative inline-block">
+                                <div id="mic-pulse-ring" class="hidden absolute -inset-3 bg-gradient-to-r from-neon-pink to-neon-purple rounded-full blur opacity-75 animate-pulse"></div>
+                                <button onclick="activateMicrophone()" id="mic-button" class="relative w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-600 to-neon-green shadow-glow-green flex items-center justify-center text-slate-950 text-2xl transition-all hover:scale-105 active:scale-95 focus:outline-none">
+                                    <i id="mic-icon" class="fa-solid fa-microphone"></i>
+                                </button>
+                            </div>
+                            <p id="mic-instruction" class="text-xs font-extrabold text-slate-400 tracking-wider uppercase">Tap to Speak</p>
+                            <p id="speech-status-text" class="text-xs text-slate-400">Tap mic button and speak clearly.</p>
+                        </div>
+
+                        <!-- Manual Pass Fallback Button -->
+                        <div class="pt-2 border-t border-slate-800/60">
+                            <button onclick="bypassCheckSuccess()" class="text-[11px] text-slate-500 hover:text-slate-300 underline underline-offset-4">
+                                Microphone trouble? Click for Manual Pass
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: Desktop Pro Pronunciation Guide -->
+                <div class="lg:col-span-3 glass-panel p-5 rounded-2xl border-slate-800 space-y-4 hidden lg:block">
+                    <div class="flex items-center space-x-2 text-neon-purple">
+                        <i class="fa-solid fa-graduation-cap text-base"></i>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Pro Coach Guide</h3>
+                    </div>
+                    <div class="space-y-3 text-xs text-slate-300">
+                        <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                            <span class="text-[10px] font-bold text-neon-cyan uppercase tracking-wider block">Accentuation Focus</span>
+                            <p id="desktop-ai-phonetics">Elevate pitch and stretch the stressed vowel!</p>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                            <span class="text-[10px] font-bold text-neon-pink uppercase tracking-wider block">Avoid Pitfalls</span>
+                            <p id="desktop-ai-pitfalls">Don't compress unstressed vowels too aggressively.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- VIEW 4: POST-MISSION DEBRIEFING SCREEN -->
+        <section id="view-debriefing" class="hidden max-w-xl mx-auto w-full my-auto">
+            <div class="glass-panel p-8 rounded-3xl border-slate-800 text-center space-y-6">
+                <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-neon-green flex items-center justify-center text-3xl mx-auto shadow-glow-green">
+                    <i class="fa-solid fa-flag-checkered"></i>
+                </div>
+                <div class="space-y-1">
+                    <h2 id="debrief-title" class="text-3xl font-black text-white">Mission Cleared!</h2>
+                    <p class="text-xs text-slate-400">Excellent pronunciation performance!</p>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">XP Earned</span>
+                        <span id="debrief-xp" class="text-lg font-black text-amber-400">+1000 XP</span>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Accuracy</span>
+                        <span id="debrief-accuracy" class="text-lg font-black text-neon-cyan">100%</span>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Max Combo</span>
+                        <span id="debrief-combo" class="text-lg font-black text-neon-pink">5x</span>
+                    </div>
+                </div>
+
+                <button onclick="proceedToNextMission()" id="btn-next-mission" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-neon-green to-emerald-600 hover:from-emerald-400 hover:to-emerald-600 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-glow-green flex items-center justify-center space-x-2">
+                    <span>Proceed to Next Mission</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- VIEW 5: FINAL VICTORY & COACHING REPORT SCREEN -->
+        <section id="view-victory-report" class="hidden max-w-2xl mx-auto w-full my-auto space-y-6">
+            <div class="glass-panel p-8 rounded-3xl border-slate-800 text-center space-y-6 relative overflow-hidden">
+                <div class="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center text-4xl mx-auto shadow-lg animate-bounce">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
+
+                <div class="space-y-2">
+                    <h2 class="text-3xl font-black text-white">Campaign Mastered!</h2>
+                    <p class="text-xs text-slate-400">You've completed all 3 speech missions in Voice Quest.</p>
+                </div>
+
+                <!-- Score Summary Cards -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Final Score</span>
+                        <span id="final-xp" class="text-2xl font-black text-amber-400">2200 XP</span>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Star Rating</span>
+                        <span id="final-stars" class="text-2xl font-black text-yellow-300">3 / 3 Stars</span>
+                    </div>
+                </div>
+
+                <!-- Overall Performance Coaching Report Box -->
+                <div class="p-5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-left space-y-3">
+                    <div class="flex items-center space-x-2 text-neon-cyan border-b border-indigo-500/20 pb-2">
+                        <i class="fa-solid fa-clipboard-check text-sm"></i>
+                        <h4 class="text-xs font-bold uppercase tracking-wider">Overall Performance Coaching Report</h4>
+                    </div>
+                    <div id="ai-report-content" class="text-xs text-slate-300 leading-relaxed space-y-2">
+                        <!-- Generated locally -->
+                    </div>
+                </div>
+
+                <!-- Navigation Actions -->
+                <div class="pt-2 flex flex-wrap gap-3 justify-center">
+                    <button onclick="restartFullCampaign()" class="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider transition-colors">Replay Campaign</button>
+                    <button onclick="goHome()" class="px-8 py-3 rounded-xl bg-gradient-to-r from-neon-cyan to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-glow-cyan">Return to Home Screen</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 glass-panel border border-slate-700 px-4 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-xs text-white">
+        <i id="toast-icon" class="fa-solid fa-circle-info text-neon-cyan"></i>
+        <span id="toast-message">Notification message</span>
+    </div>
+
+    <!-- GAMEPLAY ENGINE & SCRIPT -->
+    <script>
+        // Mission Master Database
+        const MISSION_DATA = {
+            1: {
+                name: "Syllable Strike",
+                objective: "Speak words with correct syllable emphasis. Stress the capitalized syllable for maximum accuracy.",
+                tip: "Use native audio playback to hear the exact pitch shift before attempting to record your voice.",
+                items: [
+                    { word: "prefer", subtitle: "Stressed Syllable Practice", cue: "[pre-FER]" },
+                    { word: "preference", subtitle: "Stressed Syllable Practice", cue: "[PRE-ference]" },
+                    { word: "agree", subtitle: "Stressed Syllable Practice", cue: "[a-GREE]" },
+                    { word: "natural", subtitle: "Stressed Syllable Practice", cue: "[NAT-u-ral]" },
+                    { word: "discuss", subtitle: "Stressed Syllable Practice", cue: "[dis-CUSS]" },
+                    { word: "element", subtitle: "Stressed Syllable Practice", cue: "[E-le-ment]" },
+                    { word: "difficult", subtitle: "Stressed Syllable Practice", cue: "[DIF-fi-cult]" },
+                    { word: "interesting", subtitle: "Stressed Syllable Practice", cue: "[IN-ter-est-ing]" },
+                    { word: "requirement", subtitle: "Stressed Syllable Practice", cue: "[re-QUIRE-ment]" },
+                    { word: "eco-friendly", subtitle: "Stressed Syllable Practice", cue: "[E-co-friend-ly]" }
+                ]
+            },
+            2: {
+                name: "Choice Arena",
+                objective: "Say each preference expression completely and clearly with natural rhythm, fluency, and proper intonation.",
+                tip: "Speak the full sentence without leaving out the final words.",
+                items: [
+                    { word: "What is your preference?", subtitle: "Preference Expressions" },
+                    { word: "What would you prefer?", subtitle: "Preference Expressions" },
+                    { word: "Which one do you like better?", subtitle: "Preference Expressions" },
+                    { word: "I would prefer...", subtitle: "Preference Expressions" },
+                    { word: "My preference would be for...", subtitle: "Preference Expressions" }
+                ]
+            },
+            3: {
+                name: "Phone Preference Chat",
+                objective: "Practice a telephone conversation with a speaking partner. Speak the full agreement or disagreement phrase clearly.",
+                tip: "On the phone, speaking complete sentences ensures your opinion is clearly understood.",
+                items: [
+                    { word: "I agree with you.", subtitle: "Telephone Preference Chat", opponent: "I think booking the function room for the activity is the easiest option, don't you?" },
+                    { word: "I think you are right.", subtitle: "Telephone Preference Chat", opponent: "Scheduling the workshop at Christmas would give us much more time to plan." },
+                    { word: "That's a good idea!", subtitle: "Telephone Preference Chat", opponent: "Why don't we promote our products by using social media instead?" },
+                    { word: "I am not sure about that.", subtitle: "Telephone Preference Chat", opponent: "Maybe we should book the outdoor area for our workshop?" },
+                    { word: "Not me because...", subtitle: "Telephone Preference Chat", opponent: "I prefer navy blue because it is our brand colour." },
+                    { word: "I don't think so.", subtitle: "Telephone Preference Chat", opponent: "Is presenting the final report in a meeting better than sending it by email?" },
+                    { word: "You may have a point but...", subtitle: "Telephone Preference Chat", opponent: "Investing in a full-day workshop is always better than doing short online courses." }
+                ]
+            }
+        };
+
+        // Application State
+        let currentLevel = 1;
+        let currentIndex = 0;
+        let totalXP = 0;
+        let comboStreak = 0;
+        let totalStars = 0;
+        let isListening = false;
+        let recognition = null;
+        let levelAccuracies = { 1: [], 2: [], 3: [] };
+        let lastCapturedTranscript = '';
+        let isEvaluating = false;
+
+        // Helper DOM Accessor with Null Safeguards
+        function getEl(id) {
+            return document.getElementById(id);
+        }
+
+        // Explicit Microphone Activation Function
+        async function activateMicrophone() {
+            if (isListening) {
+                if (recognition) recognition.stop();
+                return;
+            }
+
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                    showToast("Microphone active & authorized!", "fa-circle-check");
+                }
+            } catch (err) {
+                console.warn("Microphone permission error:", err);
+                showToast("Microphone access denied or unverified.", "fa-triangle-exclamation");
+                return;
+            }
+
+            toggleSpeechRecognition();
+        }
+
+        // Home Page Microphone Check Button Handler
+        async function testAndActivateMic() {
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    const btnText = getEl('welcome-mic-btn-text');
+                    if (btnText) btnText.innerText = "Mic Active & Ready ✓";
+                    
+                    const btn = getEl('welcome-mic-btn');
+                    if (btn) {
+                        btn.classList.remove('bg-slate-800', 'border-slate-700');
+                        btn.classList.add('bg-emerald-950/60', 'border-emerald-500/50', 'text-emerald-300');
+                    }
+                    showToast("Microphone ready for speech challenges!", "fa-circle-check");
+                }
+            } catch (e) {
+                showToast("Microphone access denied. Check browser permissions.", "fa-triangle-exclamation");
+            }
+        }
+
+        // Speech Recognition Setup
+        function setupSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn("Speech Recognition API not supported in this browser.");
+                return;
+            }
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 5;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                isListening = true;
+                isEvaluating = false;
+                lastCapturedTranscript = '';
+                updateMicUI(true);
+            };
+
+            recognition.onresult = (event) => {
+                if (isEvaluating) return;
+
+                let candidateTranscripts = [];
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const res = event.results[i];
+                    for (let j = 0; j < res.length; j++) {
+                        if (res[j].transcript) {
+                            candidateTranscripts.push(res[j].transcript);
+                        }
+                    }
+                }
+
+                if (candidateTranscripts.length === 0) return;
+
+                lastCapturedTranscript = candidateTranscripts[0];
+                const display = getEl('transcript-display');
+                if (display) {
+                    display.innerText = `We heard: "${lastCapturedTranscript}"`;
+                    display.classList.remove('hidden');
+                }
+
+                // Check candidate alternatives for an immediate full sentence match
+                for (let textCandidate of candidateTranscripts) {
+                    if (evaluateSpeechCandidate(textCandidate)) {
+                        isEvaluating = true;
+                        try { recognition.stop(); } catch(e){}
+                        handleSuccess();
+                        return;
+                    }
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech Recognition Error:", event.error);
+                stopListeningUI();
+                if (event.error !== 'no-speech') {
+                    showToast("Mic recognition notice. Try again or use Manual Pass.", "fa-triangle-exclamation");
+                }
+            };
+
+            recognition.onend = () => {
+                stopListeningUI();
+                if (!isEvaluating && lastCapturedTranscript.trim().length > 0) {
+                    if (evaluateSpeechCandidate(lastCapturedTranscript)) {
+                        handleSuccess();
+                    } else {
+                        handleFailure(lastCapturedTranscript);
+                    }
+                }
+            };
+        }
+
+        function toggleSpeechRecognition() {
+            if (!recognition) {
+                setupSpeechRecognition();
+                if (!recognition) {
+                    showToast("Speech Recognition not supported. Use Manual Pass button.", "fa-circle-exclamation");
+                    return;
+                }
+            }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    recognition.stop();
+                }
+            }
+        }
+
+        // Levenshtein Distance for Phonetic Typo Tolerance
+        function levenshtein(a, b) {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        // Normalize text by removing contractions, ellipses, punctuation, and extra whitespace
+        function normalizeText(str) {
+            return str.toLowerCase()
+                .replace(/\.\.\./g, '') // remove trailing prompt ellipses
+                .replace(/i'm/g, "i am")
+                .replace(/that's/g, "that is")
+                .replace(/don't/g, "do not")
+                .replace(/you're/g, "you are")
+                .replace(/what's/g, "what is")
+                .replace(/[^\w\s]/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // Strict Level-Aware Speech Verification Logic
+        function evaluateSpeechCandidate(spokenText) {
+            const currentItem = MISSION_DATA[currentLevel].items[currentIndex];
+            const target = currentItem.word;
+
+            const cleanTarget = normalizeText(target);
+            const cleanSpoken = normalizeText(spokenText);
+
+            // Exact or complete substring match
+            if (cleanSpoken.includes(cleanTarget)) return true;
+
+            const targetWords = cleanTarget.split(' ').filter(w => w.length > 0);
+            const spokenWords = cleanSpoken.split(' ').filter(w => w.length > 0);
+
+            // MISSION 1: Single Word Focus (Gentle Matching)
+            if (currentLevel === 1 || targetWords.length === 1) {
+                const targetWord = targetWords[0];
+                for (let sw of spokenWords) {
+                    if (sw === targetWord) return true;
+                    if (targetWord.length > 4 && levenshtein(sw, targetWord) <= 2) return true;
+                    if (targetWord.length <= 4 && levenshtein(sw, targetWord) <= 1) return true;
+                }
+                const noSpaceTarget = cleanTarget.replace(/\s/g, '');
+                const noSpaceSpoken = cleanSpoken.replace(/\s/g, '');
+                return noSpaceSpoken.includes(noSpaceTarget);
+            }
+
+            // MISSIONS 2 & 3: Multi-Word Phrases & Complete Sentences (STRICT ENFORCEMENT)
+            let matchedCount = 0;
+            
+            // Track matched indices to preserve word order & completeness
+            targetWords.forEach(tw => {
+                const matchFound = spokenWords.some(sw => sw === tw || (tw.length > 5 && levenshtein(sw, tw) <= 1));
+                if (matchFound) matchedCount++;
+            });
+
+            const matchRatio = matchedCount / targetWords.length;
+
+            // Strictness Check:
+            // 1. Student must speak at least 85% of all core sentence words.
+            // 2. The ending key word of the phrase MUST be present so students don't cut off mid-sentence.
+            const lastTargetWord = targetWords[targetWords.length - 1];
+            const spokenLastWordFound = spokenWords.slice(-3).some(sw => 
+                sw === lastTargetWord || (lastTargetWord.length > 4 && levenshtein(sw, lastTargetWord) <= 1)
+            );
+
+            return (matchRatio >= 0.85) && spokenLastWordFound;
+        }
+
+        function handleSuccess() {
+            totalXP += 100;
+            comboStreak++;
+            levelAccuracies[currentLevel].push(1);
+            updateStatsHUD();
+
+            try {
+                confetti({
+                    particleCount: 50,
+                    spread: 60,
+                    origin: { y: 0.7 }
+                });
+            } catch (e) {}
+
+            const card = getEl('card-container');
+            if (card) card.classList.add('border-neon-green', 'shadow-glow-green');
+            showFeedback("✨ Excellent Pronunciation! +100 XP", "text-neon-green font-bold");
+
+            setTimeout(() => {
+                if (card) card.classList.remove('border-neon-green', 'shadow-glow-green');
+                nextChallenge();
+            }, 1400);
+        }
+
+        function handleFailure(spokenText) {
+            comboStreak = 0;
+            levelAccuracies[currentLevel].push(0);
+            updateStatsHUD();
+
+            const card = getEl('card-container');
+            if (card) card.classList.add('border-rose-500', 'animate-shake');
+            
+            // Show helpful sentence guidance on failure
+            if (currentLevel > 1) {
+                showFeedback(`Please speak the full sentence! We heard: "${spokenText}"`, "text-rose-400 font-bold");
+            } else {
+                showFeedback(`Try again! We heard: "${spokenText}"`, "text-rose-400 font-bold");
+            }
+
+            setTimeout(() => {
+                if (card) card.classList.remove('border-rose-500', 'animate-shake');
+            }, 800);
+        }
+
+        function bypassCheckSuccess() {
+            handleSuccess();
+        }
+
+        // Native TTS Audio Synthesis
+        function speakTargetPhrase() {
+            const item = MISSION_DATA[currentLevel].items[currentIndex];
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                // Strip ellipses before reading aloud
+                const cleanSpeechText = item.word.replace(/\.\.\./g, '');
+                const utterance = new SpeechSynthesisUtterance(cleanSpeechText);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+                showToast(`Playing: "${cleanSpeechText}"`, "fa-volume-high");
+            } else {
+                showToast("TTS Audio not supported in browser.", "fa-circle-exclamation");
+            }
+        }
+
+        // Navigation Engine
+        function hideAllViews() {
+            ['view-welcome', 'view-briefing', 'view-gameplay', 'view-debriefing', 'view-victory-report'].forEach(id => {
+                const el = getEl(id);
+                if (el) el.classList.add('hidden');
+            });
+        }
+
+        function goHome() {
+            hideAllViews();
+            const welcome = getEl('view-welcome');
+            if (welcome) welcome.classList.remove('hidden');
+
+            const levelInd = getEl('level-indicator');
+            if (levelInd) levelInd.innerText = "Mission Selection";
+
+            const bar = getEl('mission-progress-bar');
+            if (bar) bar.style.width = "0%";
+        }
+
+        function startMissionBriefing(levelNum) {
+            currentLevel = levelNum;
+            currentIndex = 0;
+            hideAllViews();
+
+            const mission = MISSION_DATA[levelNum];
+            if (getEl('briefing-title')) getEl('briefing-title').innerText = `Mission ${levelNum}: ${mission.name}`;
+            if (getEl('briefing-tag')) getEl('briefing-tag').innerText = `${mission.items.length} Target Challenges`;
+            if (getEl('briefing-objective')) getEl('briefing-objective').innerText = mission.objective;
+            if (getEl('briefing-tip')) getEl('briefing-tip').innerText = mission.tip;
+
+            const targetsList = getEl('briefing-targets-list');
+            if (targetsList) {
+                targetsList.innerHTML = '';
+                mission.items.forEach((item, idx) => {
+                    const tag = document.createElement('div');
+                    tag.className = 'bg-slate-950/80 border border-slate-800 p-2 rounded-xl text-center';
+                    tag.innerHTML = `<span class="text-[10px] text-slate-500 block">#${idx+1}</span><span class="text-xs font-bold text-slate-200">${item.word}</span>`;
+                    targetsList.appendChild(tag);
+                });
+            }
+
+            const briefingView = getEl('view-briefing');
+            if (briefingView) briefingView.classList.remove('hidden');
+
+            const levelInd = getEl('level-indicator');
+            if (levelInd) levelInd.innerText = `Mission ${levelNum}: ${mission.name}`;
+        }
+
+        function launchGameplay() {
+            hideAllViews();
+            const gameplayView = getEl('view-gameplay');
+            if (gameplayView) gameplayView.classList.remove('hidden');
+            loadCurrentChallenge();
+        }
+
+        function loadCurrentChallenge() {
+            const mission = MISSION_DATA[currentLevel];
+            const item = mission.items[currentIndex];
+
+            const progress = ((currentIndex) / mission.items.length) * 100;
+            const bar = getEl('mission-progress-bar');
+            if (bar) bar.style.width = `${progress}%`;
+
+            if (getEl('challenge-counter')) getEl('challenge-counter').innerText = `Challenge ${currentIndex + 1} of ${mission.items.length}`;
+            if (getEl('challenge-subtitle')) getEl('challenge-subtitle').innerText = item.subtitle;
+            if (getEl('target-text')) getEl('target-text').innerText = item.word;
+
+            const cueBox = getEl('visual-cue-box');
+            if (cueBox) {
+                if (currentLevel === 1) {
+                    cueBox.innerText = item.cue;
+                    cueBox.classList.remove('hidden');
+                } else {
+                    cueBox.classList.add('hidden');
+                }
+            }
+
+            const opponentBox = getEl('opponent-prompt-box');
+            if (opponentBox) {
+                if (currentLevel === 3 && item.opponent) {
+                    if (getEl('opponent-statement')) getEl('opponent-statement').innerText = `"${item.opponent}"`;
+                    opponentBox.classList.remove('hidden');
+                } else {
+                    opponentBox.classList.add('hidden');
+                }
+            }
+
+            if (getEl('hud-level-name')) getEl('hud-level-name').innerText = mission.name;
+
+            const desktopPhonetics = getEl('desktop-ai-phonetics');
+            const desktopPitfalls = getEl('desktop-ai-pitfalls');
+            if (desktopPhonetics && desktopPitfalls) {
+                if (currentLevel === 1) {
+                    desktopPhonetics.innerText = `Focus on the capitalized sound ${item.cue || ''}. Elevate pitch and stretch the stressed vowel!`;
+                    desktopPitfalls.innerText = "Avoid equal stress on both syllables; drop pitch on unstressed parts.";
+                } else if (currentLevel === 2) {
+                    desktopPhonetics.innerText = "Focus on connected speech. Connect words smoothly and speak the ENTIRE phrase.";
+                    desktopPitfalls.innerText = "Avoid stopping early or missing the final word of the expression.";
+                } else {
+                    desktopPhonetics.innerText = "Speak full complete sentences to communicate your opinion clearly over the telephone.";
+                    desktopPitfalls.innerText = "Don't rush or drop ending words—keep every word audible from start to finish.";
+                }
+            }
+
+            showFeedback(currentLevel > 1 ? "Speak the full phrase clearly." : "Tap mic button and speak clearly.", "text-slate-400");
+            const display = getEl('transcript-display');
+            if (display) display.classList.add('hidden');
+        }
+
+        function nextChallenge() {
+            const mission = MISSION_DATA[currentLevel];
+            currentIndex++;
+            if (currentIndex < mission.items.length) {
+                loadCurrentChallenge();
+            } else {
+                showPostMissionDebriefing();
+            }
+        }
+
+        function showPostMissionDebriefing() {
+            hideAllViews();
+            const debriefView = getEl('view-debriefing');
+            if (debriefView) debriefView.classList.remove('hidden');
+
+            const mission = MISSION_DATA[currentLevel];
+            if (getEl('debrief-title')) getEl('debrief-title').innerText = `${mission.name} Cleared!`;
+            if (getEl('debrief-xp')) getEl('debrief-xp').innerText = `+${mission.items.length * 100} XP`;
+
+            const attempts = levelAccuracies[currentLevel];
+            const successes = attempts.filter(a => a === 1).length;
+            const accuracy = attempts.length ? Math.round((successes / attempts.length) * 100) : 100;
+
+            if (getEl('debrief-accuracy')) getEl('debrief-accuracy').innerText = `${accuracy}%`;
+            if (getEl('debrief-combo')) getEl('debrief-combo').innerText = `${comboStreak}x Streak`;
+
+            const btnNext = getEl('btn-next-mission');
+            if (btnNext) {
+                if (currentLevel < 3) {
+                    btnNext.innerHTML = `<span>PROCEED TO MISSION ${currentLevel + 1}</span><i class="fa-solid fa-arrow-right text-xs"></i>`;
+                } else {
+                    btnNext.innerHTML = `<span>VIEW FINAL COACH REPORT</span><i class="fa-solid fa-crown text-xs"></i>`;
+                }
+            }
+        }
+
+        function proceedToNextMission() {
+            if (currentLevel < 3) {
+                startMissionBriefing(currentLevel + 1);
+            } else {
+                showVictoryReport();
+            }
+        }
+
+        function showVictoryReport() {
+            hideAllViews();
+            const victoryView = getEl('view-victory-report');
+            if (victoryView) victoryView.classList.remove('hidden');
+
+            if (getEl('final-xp')) getEl('final-xp').innerText = `${totalXP} XP`;
+            
+            totalStars = totalXP >= 2100 ? 3 : (totalXP >= 1500 ? 2 : 1);
+            if (getEl('final-stars')) getEl('final-stars').innerText = `${totalStars} / 3 Stars`;
+            if (getEl('stat-stars')) getEl('stat-stars').innerText = totalStars;
+
+            const bar = getEl('mission-progress-bar');
+            if (bar) bar.style.width = "100%";
+
+            generateLocalCoachingReport();
+        }
+
+        function restartFullCampaign() {
+            totalXP = 0;
+            comboStreak = 0;
+            totalStars = 0;
+            levelAccuracies = { 1: [], 2: [], 3: [] };
+            updateStatsHUD();
+            startMissionBriefing(1);
+        }
+
+        // Fully Dynamic Offline Coaching Evaluation
+        function generateLocalCoachingReport() {
+            const reportBox = getEl('ai-report-content');
+            if (!reportBox) return;
+
+            // Helper to calculate accuracy percentage for a given level
+            const calcAcc = (lvl) => {
+                const arr = levelAccuracies[lvl];
+                if (!arr || arr.length === 0) return 100;
+                const wins = arr.filter(v => v === 1).length;
+                return Math.round((wins / arr.length) * 100);
+            };
+
+            const acc1 = calcAcc(1);
+            const acc2 = calcAcc(2);
+            const acc3 = calcAcc(3);
+
+            const totalAttempts = (levelAccuracies[1].length || 0) + (levelAccuracies[2].length || 0) + (levelAccuracies[3].length || 0);
+            const totalWins = (levelAccuracies[1].filter(v=>v===1).length) + (levelAccuracies[2].filter(v=>v===1).length) + (levelAccuracies[3].filter(v=>v===1).length);
+            const overallAcc = totalAttempts > 0 ? Math.round((totalWins / totalAttempts) * 100) : 100;
+
+            // Determine Dynamic Rank & Title based on Score & Accuracy
+            let rankTitle = "";
+            let rankColor = "";
+            if (totalXP >= 2200 && overallAcc >= 90) {
+                rankTitle = "S-Rank Voice Master";
+                rankColor = "text-amber-400";
+            } else if (totalXP >= 1800 && overallAcc >= 75) {
+                rankTitle = "A-Rank Fluent Communicator";
+                rankColor = "text-neon-cyan";
+            } else if (totalXP >= 1400) {
+                rankTitle = "B-Rank Proficient Speaker";
+                rankColor = "text-neon-purple";
+            } else {
+                rankTitle = "C-Rank Vocal Apprentice";
+                rankColor = "text-slate-300";
+            }
+
+            // Determine Highest & Lowest Performing Missions
+            const missionAccs = [
+                { name: "Mission 1 (Syllable Stress)", acc: acc1, advice: "Replay Mission 1 to practice elongating stressed vowels." },
+                { name: "Mission 2 (Preference Expressions)", acc: acc2, advice: "Replay Mission 2 to focus on sentence rhythm and complete phrase delivery." },
+                { name: "Mission 3 (Phone Preference Chat)", acc: acc3, advice: "Replay Mission 3 to practice stating complete agreement/disagreement sentences on the phone." }
+            ];
+
+            // Sort missions by accuracy
+            missionAccs.sort((a, b) => b.acc - a.acc);
+            const bestMission = missionAccs[0];
+            const weakestMission = missionAccs[missionAccs.length - 1];
+
+            let strengthText = "";
+            if (bestMission.acc >= 90) {
+                strengthText = `Exceptional mastery in <strong>${bestMission.name}</strong> with a ${bestMission.acc}% first-attempt pass rate!`;
+            } else {
+                strengthText = `Solid effort in <strong>${bestMission.name}</strong> (${bestMission.acc}% accuracy).`;
+            }
+
+            let adviceText = "";
+            if (weakestMission.acc < 80) {
+                adviceText = weakestMission.advice;
+            } else {
+                adviceText = "Great overall performance! To achieve an S-Rank, aim for 100% accuracy on every first attempt without missteps.";
+            }
+
+            reportBox.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                        <span class="text-slate-400 font-medium">Earned Status Rank:</span>
+                        <span class="font-black ${rankColor} text-sm uppercase tracking-wider">${rankTitle}</span>
+                    </div>
+
+                    <!-- Per-Mission Accuracy Breakdown Grid -->
+                    <div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Mission Breakdown:</span>
+                        <div class="grid grid-cols-3 gap-2 text-center text-[11px]">
+                            <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                                <span class="block text-slate-500 font-medium">Mission 1</span>
+                                <span class="font-bold text-neon-cyan">${acc1}%</span>
+                            </div>
+                            <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                                <span class="block text-slate-500 font-medium">Mission 2</span>
+                                <span class="font-bold text-neon-purple">${acc2}%</span>
+                            </div>
+                            <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                                <span class="block text-slate-500 font-medium">Mission 3</span>
+                                <span class="font-bold text-neon-green">${acc3}%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-1 space-y-1.5">
+                        <p><strong>Overall Fluency:</strong> ${overallAcc}% total vocal accuracy across all challenges.</p>
+                        <p><strong>Primary Strength:</strong> ${strengthText}</p>
+                        <p><strong>Actionable Goal:</strong> ${adviceText}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // HUD Helpers
+        function updateStatsHUD() {
+            if (getEl('stat-xp')) getEl('stat-xp').innerText = `${totalXP} XP`;
+            const comboEl = getEl('combo-container');
+            const comboStat = getEl('stat-combo');
+
+            if (comboEl && comboStat) {
+                if (comboStreak > 1) {
+                    comboStat.innerText = `${comboStreak}x`;
+                    comboEl.classList.remove('hidden');
+                    comboEl.classList.add('flex');
+                } else {
+                    comboEl.classList.add('hidden');
+                    comboEl.classList.remove('flex');
+                }
+            }
+        }
+
+        function showFeedback(msg, className) {
+            const statusText = getEl('speech-status-text');
+            if (statusText) {
+                statusText.innerText = msg;
+                statusText.className = `text-xs ${className}`;
+            }
+        }
+
+        let visualizerInterval = null;
+        function updateMicUI(listening) {
+            const micBtn = getEl('mic-button');
+            const micIcon = getEl('mic-icon');
+            const pulseRing = getEl('mic-pulse-ring');
+            const micInstr = getEl('mic-instruction');
+
+            if (listening) {
+                if (micBtn) {
+                    micBtn.classList.remove('from-emerald-600', 'to-neon-green', 'shadow-glow-green');
+                    micBtn.classList.add('from-pink-600', 'to-neon-purple', 'shadow-glow-purple', 'scale-105');
+                }
+                if (micIcon) micIcon.className = "fa-solid fa-waveform text-white animate-pulse";
+                if (pulseRing) pulseRing.classList.remove('hidden');
+                if (micInstr) {
+                    micInstr.innerText = "Listening... Speak full sentence!";
+                    micInstr.className = "text-xs font-extrabold text-neon-pink tracking-wider uppercase animate-pulse";
+                }
+
+                const bars = document.querySelectorAll('#visualizer-bars div');
+                if (bars.length > 0) {
+                    visualizerInterval = setInterval(() => {
+                        bars.forEach(bar => {
+                            const h = Math.floor(Math.random() * 45) + 8;
+                            bar.style.height = `${h}px`;
+                        });
+                    }, 120);
+                }
+            } else {
+                stopListeningUI();
+            }
+        }
+
+        function stopListeningUI() {
+            isListening = false;
+            if (visualizerInterval) {
+                clearInterval(visualizerInterval);
+                visualizerInterval = null;
+            }
+            const micBtn = getEl('mic-button');
+            const micIcon = getEl('mic-icon');
+            const pulseRing = getEl('mic-pulse-ring');
+            const micInstr = getEl('mic-instruction');
+
+            if (micBtn) {
+                micBtn.classList.remove('from-pink-600', 'to-neon-purple', 'shadow-glow-purple', 'scale-105');
+                micBtn.classList.add('from-emerald-600', 'to-neon-green', 'shadow-glow-green');
+            }
+            if (micIcon) micIcon.className = "fa-solid fa-microphone";
+            if (pulseRing) pulseRing.classList.add('hidden');
+            if (micInstr) {
+                micInstr.innerText = "Tap to Speak";
+                micInstr.className = "text-xs font-extrabold text-slate-400 tracking-wider uppercase";
+            }
+        }
+
+        function showToast(message, iconClass = "fa-circle-info") {
+            const toast = getEl('toast');
+            const toastMessage = getEl('toast-message');
+            const toastIcon = getEl('toast-icon');
+
+            if (!toast || !toastMessage || !toastIcon) return;
+
+            toastMessage.innerText = message;
+            toastIcon.className = `fa-solid ${iconClass} text-neon-cyan`;
+
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2500);
+        }
+
+        // Initialize Application
+        window.onload = function() {
+            setupSpeechRecognition();
+            goHome();
+        };
+    </script>
+</body>
+</html>
